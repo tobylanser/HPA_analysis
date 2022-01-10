@@ -48,6 +48,7 @@ gem1_seurat_object = CreateSeuratObject(gem1_data_files, min.cells = 3, min.gene
 gem1_seurat_object@meta.data$condition <- "HPA"
 gem1_seurat_object@meta.data$Sex <- "M"
 gem1_seurat_object@meta.data$orig.ident <- "GEM1"
+gem1_seurat_object <- gem1_seurat_object[!grepl("Malat1", row.names(gem1_seurat_object)), ]
 gem1_seurat_object[["percent.mt"]] <- PercentageFeatureSet(gem1_seurat_object, pattern = "^mt-")
 plot1 <- FeatureScatter(gem1_seurat_object, feature1 = "nCount_RNA", feature2 = "percent.mt")
 plot2 <- FeatureScatter(gem1_seurat_object, feature1 = "nCount_RNA", feature2 = "nFeature_RNA")
@@ -56,23 +57,23 @@ plot1 + plot2 + plot3
 gem1_seurat_object <- subset(gem1_seurat_object, subset = nFeature_RNA > 200 & nFeature_RNA < 700 & percent.mt < 7)
 gem1_seurat_object <- SCTransform(gem1_seurat_object, method = "glmGamPoi", vars.to.regress = "percent.mt")
 gem1_seurat_object <- RunPCA(object = gem1_seurat_object, verbose = F)
-ElbowPlot(object = gem1_seurat_object, ndims = 20)
+ElbowPlot(object = gem1_seurat_object, ndims = 30)
 gem1_seurat_object <- FindNeighbors(object = gem1_seurat_object, dims = 1:15)
-gem1_seurat_object <- FindClusters(object = gem1_seurat_object, resolution = 0.7)
+gem1_seurat_object <- FindClusters(object = gem1_seurat_object, resolution = 1.0)
 ##
 gem1_seurat_object <- RunUMAP(gem1_seurat_object, dims = 1:15)
 
 DimPlot_scCustom(gem1_seurat_object, label = T, split.by = "condition")
 
-sweep.res.list_gem1 <- paramSweep_v3(gem1_seurat_object, PCs = 1:10, sct = T, num.cores = 2)
+sweep.res.list_gem1 <- paramSweep_v3(gem1_seurat_object, PCs = 1:15, sct = T, num.cores = 2)
 sweep.stats_gem1 <- summarizeSweep(sweep.res.list_gem1, GT = FALSE)
 bcmv_gem1 <- find.pK(sweep.stats_gem1)
 homotypic.prop <- modelHomotypic(gem1_seurat_object$seurat_clusters)           ## ex: annotations <- seu_kidney@meta.data$ClusteringResults
 nExp_poi <- round(0.035*nrow(gem1_seurat_object@meta.data)) #tailor for your dataset
 nExp_poi.adj <- round(nExp_poi*(1-homotypic.prop))
-gem1_seurat_object <- doubletFinder_v3(gem1_seurat_object, PCs = 1:10, pN = 0.25, pK = 0.013, nExp = nExp_poi, reuse.pANN = FALSE, sct = T)
-gem1_seurat_object@meta.data[,"CellTypes_DF"] <- gem1_seurat_object$DF.classifications_0.25_0.013_294
-gem1_seurat_object@meta.data$CellTypes_DF[which(gem1_seurat_object$pANN_0.25_0.013_294 == "Doublet")] <- "Doublet"
+gem1_seurat_object <- doubletFinder_v3(gem1_seurat_object, PCs = 1:15, pN = 0.25, pK = 0.014, nExp = nExp_poi, reuse.pANN = FALSE, sct = T)
+gem1_seurat_object@meta.data[,"CellTypes_DF"] <- gem1_seurat_object$DF.classifications_0.25_0.014_293
+gem1_seurat_object@meta.data$CellTypes_DF[which(gem1_seurat_object$pANN_0.25_0.014_293 == "Doublet")] <- "Doublet"
 DimPlot(gem1_seurat_object, group.by="CellTypes_DF", reduction="umap", pt.size=0.5, order=c("Coll.Duct.TC","Doublet"), cols=c("#66C2A5","#FFD92F","#8DA0CB","#A6D854","#E78AC3","#B3B3B3","#E5C494","black","#FC8D62"))
 saveRDS(gem1_seurat_object, "gem1_seurat_withDoublets.rds")
 
@@ -494,7 +495,7 @@ Idents(object = gem10_Wdoublets) <- "CellTypes_DF"
 gem1_singlets <- subset(gem1_Wdoublets, idents ="Singlet")
 gem2_singlets <- subset(gem2_Wdoublets, idents ="Singlet")
 gem3_singlets <- subset(gem3_Wdoublets, idents ="Singlet")
-gem4_singlets <- subset(gem1_Wdoublets, idents ="Singlet")
+gem4_singlets <- subset(gem4_Wdoublets, idents ="Singlet")
 gem5_singlets <- subset(gem5_Wdoublets, idents ="Singlet")
 gem6_singlets <- subset(gem6_Wdoublets, idents ="Singlet")
 gem7_singlets <- subset(gem7_Wdoublets, idents ="Singlet")
@@ -513,14 +514,15 @@ saveRDS(gem8_singlets, "gem8_singlets.rds")
 saveRDS(gem9_singlets, "gem9_singlets.rds")
 saveRDS(gem10_singlets, "gem10_singlets.rds")
 
+
 HPA_PBS_merged <- merge(gem1_singlets, y = c(gem2_singlets, gem3_singlets, gem4_singlets,
                                              gem9_singlets, gem10_singlets),
                         add.cell.ids = c("GEM1", "GEM2", "GEM3", "GEM4",
                                          "GEM9", "GEM10"))
 
-WT_KO_merged <- merge(gem5_singlets, y = c(gem6_singlets, gem7_singlets, gem8_singlets),
-                      add.cell.ids = c("GEM5", "GEM6", "GEM7", "GEM8"))
-
+# WT_KO_merged <- merge(gem5_singlets, y = c(gem6_singlets, gem7_singlets, gem8_singlets),
+#                       add.cell.ids = c("GEM5", "GEM6", "GEM7", "GEM8"))
+# 
 
 KO_HPA_merged <- merge(gem1_singlets, y = c(gem2_singlets, gem7_singlets, gem8_singlets, gem9_singlets),
                        add.cell.ids = c("GEM1", "GEM2", "GEM7", "GEM8", "GEM9"))
